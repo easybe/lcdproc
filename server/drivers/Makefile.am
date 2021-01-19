@@ -23,7 +23,7 @@ AM_LDFLAGS = @LDSHARED@
 
 lcdexecbindir = $(pkglibdir)
 lcdexecbin_PROGRAMS = @DRIVERS@
-EXTRA_PROGRAMS = bayrad CFontz CFontzPacket curses CwLnx debug ea65 EyeboxOne futaba g15 glcd glcdlib glk hd44780 i2500vfd icp_a106 imon imonlcd IOWarrior irman irtrans joy jw002 lb216 lcdm001 lcterm linux_input lirc lis MD8800 mdm166a ms6931 mtc_s16209x MtxOrb mx5000 NoritakeVFD Olimex_MOD_LCD1x9 picolcd pyramid rawserial sdeclcd sed1330 sed1520 serialPOS serialVFD shuttleVFD sli stv5730 SureElec svga t6963 text tyan ula200 vlsys_m428 xosd yard2LCD
+EXTRA_PROGRAMS = bayrad CFontz CFontzPacket curses CwLnx debug ea65 EyeboxOne futaba g15 glcd glcdlib glk hd44780 i2500vfd icp_a106 imon imonlcd IOWarrior irman irtrans joy jw002 lb216 lcdm001 lcterm linux_input lirc lis MD8800 mdm166a ms6931 mtc_s16209x MtxOrb mx5000 NoritakeVFD Olimex_MOD_LCD1x9 picolcd pyramid rawserial sdeclcd sed1330 sed1520 serialPOS serialVFD sevenseg shuttleVFD sli stv5730 SureElec svga t6963 text tyan ula200 vlsys_m428 xosd yard2LCD
 noinst_LIBRARIES = libLCD.a libbignum.a
 
 futaba_CFLAGS =      @LIBUSB_CFLAGS@ @LIBUSB_1_0_CFLAGS@ $(AM_CFLAGS)
