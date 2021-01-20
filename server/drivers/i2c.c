@@ -118,3 +118,32 @@ int i2c_write(I2CHandle *h, void *buf, unsigned int count)
 	return 0;
 #endif
 }
+
+#ifdef HAVE_LINUX_I2C_DEV_H
+/**
+ * write data to an i2c slave without expecting an ACK
+ * \param h	Handle of i2c slave
+ * \param buf   Buffer to send to the device
+ * \param count Number of bytes to write
+ * \retval >=0     Success.
+ * \retval <0      Error.
+ */
+int i2c_write_no_ack(I2CHandle *h, void *buf, unsigned int count)
+{
+    struct i2c_msg msgs[1];
+    struct i2c_rdwr_ioctl_data msg_set[1];
+
+    msgs[0].addr = h->slave;
+    msgs[0].flags = I2C_M_NO_RD_ACK;
+    msgs[0].len = count;
+    msgs[0].buf = buf;
+
+    msg_set[0].msgs = msgs;
+    msg_set[0].nmsgs = 1;
+
+    if (ioctl(h, I2C_RDWR, &msg_set) < 0)
+        return -1;
+
+    return 0;
+}
+#endif

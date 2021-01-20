@@ -24,9 +24,9 @@
 #include <string.h>
 
 #include "lcd.h"
-#include "text.h"
+#include "sevenseg.h"
 #include "shared/report.h"
-
+#include "map_to_7segment.h"  //#include <uapi/linux/map_to_7segment.h> ?
 
 /** private data for the \c text driver */
 typedef struct sevenseg_private_data {
@@ -42,6 +42,24 @@ MODULE_EXPORT int stay_in_foreground = 0;
 MODULE_EXPORT int supports_multiple = 0;
 MODULE_EXPORT char *symbol_prefix = "sevenseg_";
 
+
+static SEG7_DEFAULT_MAP(map_seg7);
+
+unsigned char
+flip_seg7(unsigned char val)
+{
+	unsigned char flipped = 0;
+
+	flipped |= val & 1 << BIT_SEG7_A ? 1 << BIT_SEG7_D : 0;
+	flipped |= val & 1 << BIT_SEG7_B ? 1 << BIT_SEG7_E : 0;
+	flipped |= val & 1 << BIT_SEG7_C ? 1 << BIT_SEG7_F : 0;
+	flipped |= val & 1 << BIT_SEG7_D ? 1 << BIT_SEG7_A : 0;
+	flipped |= val & 1 << BIT_SEG7_E ? 1 << BIT_SEG7_B : 0;
+	flipped |= val & 1 << BIT_SEG7_F ? 1 << BIT_SEG7_C : 0;
+	flipped |= val & 1 << BIT_SEG7_G;
+
+	return flipped;
+}
 
 /**
  * Initialize the driver.
@@ -74,16 +92,39 @@ sevenseg_init(Driver *drvthis)
 	else {
 		/* Use our own size from config file */
 		strncpy(buf,
-			drvthis->config_get_string(drvthis->name, "Size", 0, TEXTDRV_DEFAULT_SIZE),
+			drvthis->config_get_string(drvthis->name, "Size", 0, SEVENSEG_DEFAULT_SIZE),
 			sizeof(buf));
 		buf[sizeof(buf) - 1] = '\0';
 		if ((sscanf(buf, "%dx%d", &p->width, &p->height) != 2)
 		    || (p->width <= 0) || (p->width > LCD_MAX_WIDTH)
 		    || (p->height <= 0) || (p->height > LCD_MAX_HEIGHT)) {
 			report(RPT_WARNING, "%s: cannot read Size: %s; using default %s",
-			       drvthis->name, buf, TEXTDRV_DEFAULT_SIZE);
-			sscanf(TEXTDRV_DEFAULT_SIZE, "%dx%d", &p->width, &p->height);
+			       drvthis->name, buf, SEVENSEG_DEFAULT_SIZE);
+			sscanf(SEVENSEG_DEFAULT_SIZE, "%dx%d", &p->width, &p->height);
 		}
+	}
+
+    /* Get and search for the connection type */
+	s = drvthis->config_get_string(drvthis->name, "ConnectionType", 0, "i2c");
+	for (i = 0; (connectionMapping[i].name != NULL) &&
+		    (strcasecmp(s, connectionMapping[i].name) != 0); i++)
+		;
+	if (connectionMapping[i].name == NULL) {
+		report(RPT_ERR, "%s: unknown ConnectionType: %s", drvthis->name, s);
+		return -1;
+	} else {
+		/* set connection type */
+		p->connectiontype = connectionMapping[i].connectiontype;
+
+		report(RPT_INFO, "HD44780: using ConnectionType: %s", connectionMapping[i].name);
+
+		if_type = connectionMapping[i].if_type;
+		init_fn = connectionMapping[i].init_fn;
+	}
+	report(RPT_INFO, "HD44780: selecting Model: %s", model_name(p->model));
+	report_backlight_type(RPT_INFO, p->backlight_type);
+	if (p->backlight_type & BACKLIGHT_CONFIG_CMDS) {
+		report(RPT_INFO, "HD44780: backlight config commands: on: %02x, off: %02x", p->backlight_cmd_on, p->backlight_cmd_off);
 	}
 
 	// Allocate the framebuffer
@@ -171,21 +212,19 @@ sevenseg_flush(Driver *drvthis)
 	char out[LCD_MAX_WIDTH];
 	int i;
 
-	memset(out, '-', p->width);
+	memcpy(out, p->framebuf, p->width);
 	out[p->width] = '\0';
-	printf("+%s+\n", out);
+	//printf("%s\n", out);
 
-	for (i = 0; i < p->height; i++) {
-		memcpy(out, p->framebuf + (i * p->width), p->width);
-		out[p->width] = '\0';
-		printf("|%s|\n", out);
+	printf("\r");
+
+	for (i = 0; i < p->width; i++) {
+		printf("%02x ", map_to_seg7(&map_seg7, out[i]));
 	}
 
-	memset(out, '-', p->width);
-	out[p->width] = '\0';
-	printf("+%s+\n", out);
+	//printf("\n");
 
-	fflush(stdin);
+	fflush(stdout);
 }
 
 
@@ -234,6 +273,8 @@ sevenseg_chr(Driver *drvthis, int x, int y, char c)
 
 	if ((x >= 0) && (y >= 0) && (x < p->width) && (y < p->height))
 		p->framebuf[(y * p->width) + x] = c;
+
+	printf("%c\n", c);
 }
 
 
